@@ -1,4 +1,5 @@
 import axios from "@/utils/request";
+import { LyricService } from "@/services/lyricsService";
 
 /**
  * 歌曲部分
@@ -43,12 +44,9 @@ export const getMusicUrl = (id, level = "exhigh") => {
  * @param {number} id - 要替换播放链接的音乐ID
  */
 export const getMusicNumUrl = async (id) => {
-  // const server =
-  //   process.env.NODE_ENV === "development"
-  //     ? "kuwo,qq,pyncmd,kugou"
-  //     : "qq,pyncmd,kugou";
   const server = "qq,pyncmd";
-  const url = `${import.meta.env.VITE_UNM_API}match?id=${id}&server=${server}`;
+  // 走同源代理路径，方便 dev/preview 代理和 Vercel rewrites 统一处理
+  const url = `/api/unm/match?id=${id}&server=${server}`;
   const response = await fetch(url, {
     method: "GET",
     headers: {
@@ -62,33 +60,41 @@ export const getMusicNumUrl = async (id) => {
 };
 
 /**
- * 获取指定音乐的歌词
+ * 获取指定音乐的歌词 (Unified)
  * @param {number} id - 要获取歌词的音乐ID
+ * @param {boolean} [useLyricAtlas=false] - 是否使用 Lyric Atlas API。默认为 false。
+ * @returns {Promise<object|null>} Returns LyricData object or null
  */
-export const getMusicLyric = (id) => {
-  return axios({
-    method: "GET",
-    hiddenBar: true,
-    url: "/lyric",
-    params: {
-      id,
-    },
-  });
+export const getUnifiedLyric = async (id, useLyricAtlas = false) => {
+  const lyricService = new LyricService(useLyricAtlas);
+  try {
+    // Directly return the result from the service, which is in LyricData format
+    const lyricData = await lyricService.fetchLyric(id);
+    return lyricData;
+  } catch (error) {
+    console.error(`Failed to fetch unified lyric for id ${id}:`, error);
+    // Return null or an error object compatible with parseLyric error handling
+    return null; // Or { code: 500, message: 'Failed to fetch' }
+  }
 };
 
 /**
- * 获取指定音乐的逐字歌词
- * @param {number} id - 要获取逐字歌词的音乐ID
+ * 检查指定音乐的歌词元数据
+ * @param {number} id - 要检查的音乐ID
+ * @param {boolean} [useLyricAtlas=true] - 是否使用 Lyric Atlas API。默认为 true，因为目前只有LAAPI支持此功能。
+ * @returns {Promise<object|null>} 返回歌词元数据对象或null
  */
-export const getMusicNewLyric = (id) => {
-  return axios({
-    method: "GET",
-    hiddenBar: true,
-    url: "/lyric/new",
-    params: {
-      id,
-    },
-  });
+export const checkLyricMeta = async (id, useLyricAtlas = true) => {
+  // 元数据检查需要Lyric Atlas API，所以默认使用
+  const lyricService = new LyricService(useLyricAtlas);
+  try {
+    // 如果服务不支持元数据检查，会返回null
+    const metaData = await lyricService.checkLyricMeta(id);
+    return metaData;
+  } catch (error) {
+    console.error(`Failed to check lyric meta for id ${id}:`, error);
+    return null;
+  }
 };
 
 /**

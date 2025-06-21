@@ -19,6 +19,8 @@ const useSettingDataStore = defineStore("settingData", {
       autoSignIn: true,
       // 列表点击方式
       listClickMode: "dblclick",
+      // 是否使用 Lyric Atlas API
+      useLyricAtlasAPI: false,
       // 播放器样式
       playerStyle: "cover",
       // 底栏歌词显示
@@ -59,6 +61,9 @@ const useSettingDataStore = defineStore("settingData", {
       useUnmServer: true,
       // 播放背景是否显示图片
       backgroundImageShow: "blur",
+      // 模糊背景设置
+      blurAmount: 30,
+      contrastAmount: 1.2,
       // 流动背景设置
       fps: 60,
       flowSpeed: 2,
@@ -66,7 +71,7 @@ const useSettingDataStore = defineStore("settingData", {
       albumImageUrl: "none",
       // 动态背景设置
       dynamicFlowSpeed: false,
-      dynamicFlowSpeedScale: 27,
+      dynamicFlowSpeedScale: 2,
       // 是否显示前奏等待
       countDownShow: true,
       // 是否显示歌词设置

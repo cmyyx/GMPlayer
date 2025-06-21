@@ -1,20 +1,37 @@
 <template>
   <Transition>
-    <div :key="currentLyrics?.[0]?.startTime" 
+    <div :key="currentLyrics?.startTime" 
          :class="lyricClasses">
-      <LyricPlayer class="am-lyric" />
+      <LyricPlayer class="am-lyric" @line-click="handleLineClick" @lrcTextClick="handleLrcTextClick" />
     </div>
   </Transition>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { musicStore, settingStore } from "../../store";
 import LyricPlayer from "../../libs/apple-music-like/LyricPlayer.vue";
-import { createLyricsProcessor } from "../../libs/apple-music-like/processLyrics";
+import { getProcessedLyrics, preprocessLyrics } from "../../libs/apple-music-like/processLyrics";
+
+const emit = defineEmits<{
+  lrcTextClick: [time: number]
+}>();
 
 const music = musicStore();
 const setting = settingStore();
+
+// 处理歌词点击
+const handleLineClick = (e: { line: { getLine: () => { startTime: number } } }) => {
+  const time = e.line.getLine().startTime;
+  if (time != null) {
+    emit("lrcTextClick", time / 1000);
+  }
+};
+
+// 直接处理从 LyricPlayer 传递的 lrcTextClick 事件
+const handleLrcTextClick = (time: number) => {
+  emit("lrcTextClick", time);
+};
 
 // 计算歌词容器的类名
 const lyricClasses = computed(() => ({
@@ -24,14 +41,48 @@ const lyricClasses = computed(() => ({
   'loading': music.isLoadingSong
 }));
 
-// 获取当前歌词
+// 监听设置变化，预处理歌词数据
+watch([
+  () => setting.showYrc, 
+  () => setting.showRoma, 
+  () => setting.showTransl
+], () => {
+  // 设置变化时预处理歌词数据
+  if (music.songLyric && Object.keys(music.songLyric).length > 0) {
+    console.log('[RollingLyrics] 设置变化，重新预处理歌词');
+    preprocessLyrics(music.songLyric, {
+      showYrc: setting.showYrc,
+      showRoma: setting.showRoma,
+      showTransl: setting.showTransl
+    });
+  }
+}, { immediate: true });
+
+// 获取当前行，增强错误处理以提高组件稳定性
 const currentLyrics = computed(() => {
-  const songLyric = music.songLyric || { lrcAMData: [], yrcAMData: [] };
-  return createLyricsProcessor(songLyric, {
-    showYrc: setting.showYrc,
-    showRoma: setting.showRoma,
-    showTransl: setting.showTransl
-  })[0];
+  const songLyric = music.songLyric;
+  
+  // 检查歌词数据是否有效
+  if (!songLyric || 
+      (!songLyric.lrcAMData?.length && 
+       !songLyric.yrcAMData?.length && 
+       !songLyric.ttml?.length)) {
+    return null;
+  }
+  
+  try {
+    // 使用优化后的处理函数，利用缓存提高性能
+    const processedLyrics = getProcessedLyrics(songLyric, {
+      showYrc: setting.showYrc,
+      showRoma: setting.showRoma,
+      showTransl: setting.showTransl
+    });
+    
+    return processedLyrics && processedLyrics.length > 0 ? processedLyrics[0] : null;
+  } catch (error) {
+    console.error('[RollingLyrics] 处理歌词时发生错误:', error);
+    return null;
+  }
 });
 </script>
 

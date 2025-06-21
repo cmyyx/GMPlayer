@@ -45,7 +45,7 @@
           <n-form-item label="动态流速倍率">
             <n-input-number :min="0.1" v-model:value="dynamicFlowSpeedScale" :disabled="!dynamicFlowSpeed" />
             <template #feedback>
-              调节动态流速的乘算倍率，倍率越高，随音频烈度的而产生的流速变化会越明显，性能消耗也会越大，默认为 25。
+              调节动态流速的乘算倍率，倍率越高，随音频烈度的而产生的流速变化会越明显，性能消耗也会越大，默认为 2。
             </template>
           </n-form-item>
           <br />
@@ -69,6 +69,57 @@
               {{ t('setting.eplorySetting.albumImageUrl.tip') }}
             </template>
           </n-form-item>
+          <!-- Lyric Atlas API Switch -->
+          <n-form-item :label="$t('setting.player.useLyricAtlas')">
+            <template #label>
+              {{ $t('setting.player.useLyricAtlas') }}
+              <n-tooltip trigger="hover">
+                <template #trigger>
+                  <n-icon class="tip" size="18" :component="Help" />
+                </template>
+                {{ $t('setting.player.useLyricAtlasTip') }}
+              </n-tooltip>
+            </template>
+            <n-switch v-model:value="useLyricAtlasAPI" />
+          </n-form-item>
+        </n-form>
+      </n-modal>
+    </n-card>
+    <n-card v-if="backgroundImageShow === 'blur'" class="set-item">
+      <div class="name">
+        WebGL 模糊效果设置
+        <span class="tip">使用 WebGL 渲染的高性能模糊效果，降低设备性能消耗</span>
+      </div>
+      <n-button class="set" @click="isBlurModalOn = true">配置</n-button>
+      <n-modal class="s-modal" preset="dialog" title="WebGL 模糊效果设置" v-model:show="isBlurModalOn">
+        <n-form style="margin-top: 1rem;">
+          <n-form-item label="FPS">
+            <n-input-number :min="1" :max="60" v-model:value="fps" />
+            <template #feedback>
+              设置渲染帧率，值越低性能消耗越小，但动画可能不够流畅
+            </template>
+          </n-form-item>
+          <br />
+          <n-form-item label="模糊程度">
+            <n-input-number :min="1" :max="100" v-model:value="blurAmount" />
+            <template #feedback>
+              设置背景模糊的强度，值越大模糊效果越强
+            </template>
+          </n-form-item>
+          <br />
+          <n-form-item label="对比度">
+            <n-input-number :min="0.1" :max="3" :step="0.1" v-model:value="contrastAmount" />
+            <template #feedback>
+              设置背景的对比度，提高对比度可以使色彩更加鲜明
+            </template>
+          </n-form-item>
+          <br />
+          <n-form-item label="渲染比例">
+            <n-input-number :min="0.1" :max="1" :step="0.1" v-model:value="renderScale" />
+            <template #feedback>
+              设置渲染的画布比例，值越低性能消耗越小，但画质可能降低
+            </template>
+          </n-form-item>
         </n-form>
       </n-modal>
     </n-card>
@@ -85,6 +136,21 @@
         <span class="tip">{{ $t("setting.showRomaTip") }}</span>
       </div>
       <n-switch v-model:value="showRoma" :round="false" />
+    </n-card>
+    <n-card class="set-item">
+      <div class="name">
+        <div class="dev">
+           使用 Lyric Atlas API
+          <n-tag round :bordered="false" size="small" type="warning">
+            {{ $t("setting.dev") }}
+            <template #icon>
+              <n-icon :component="Code" />
+            </template>
+          </n-tag>
+        </div>
+        <span class="tip">从备用 API 获取歌词 (需要配置 API 地址)</span>
+      </div>
+      <n-switch v-model:value="useLyricAtlasAPI" :round="false" />
     </n-card>
     <n-card class="set-item">
       <div class="name">
@@ -267,7 +333,8 @@
 import { storeToRefs } from "pinia";
 import { settingStore } from "@/store";
 import { useI18n } from "vue-i18n";
-import { Code } from "@icon-park/vue-next";
+import { Code, Help } from "@icon-park/vue-next";
+import { watch } from "vue";
 
 const { t } = useI18n();
 
@@ -299,9 +366,18 @@ const {
   lyricFontWeight,
   lyricLetterSpacing,
   lyricLineHeight,
+  useLyricAtlasAPI,
+  blurAmount,
+  contrastAmount,
 } = storeToRefs(setting);
 console.log('SETTING', fps)
 const isModalOn = ref(false)
+const isBlurModalOn = ref(false)
+
+// 监听 Lyric Atlas API 设置变化
+watch(useLyricAtlasAPI, (newValue, oldValue) => {
+  console.log(`[Setting] useLyricAtlasAPI changed from ${oldValue} to ${newValue}`);
+});
 
 // 歌词位置
 const lyricsPositionOptions = [

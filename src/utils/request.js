@@ -2,13 +2,14 @@ import axios from "axios";
 
 switch (process.env.NODE_ENV) {
   case "production":
-    axios.defaults.baseURL = import.meta.env.VITE_MUSIC_API;
+    // 生产环境也使用 '/api'，需要在部署服务器 (Nginx、Apache、Netlify 等) 上做反向代理到真实后端，规避 CORS
+    axios.defaults.baseURL = "/api/ncm";
     break;
   case "development":
-    axios.defaults.baseURL = "/api";
+    axios.defaults.baseURL = "/api/ncm";
     break;
   default:
-    axios.defaults.baseURL = import.meta.env.VITE_MUSIC_API;
+    axios.defaults.baseURL = "/api/ncm";
     break;
 }
 
@@ -19,12 +20,40 @@ axios.defaults.withCredentials = true;
 // 请求拦截
 axios.interceptors.request.use(
   (request) => {
+    // 检查是否为 Lyric Atlas API 的请求
+    const isLyricAtlasRequest = request.url && request.url.startsWith('/api/la');
+
+    // Ensure headers object exists
+    request.headers = request.headers || {};
+
+    if (isLyricAtlasRequest) {
+      // 对 Lyric Atlas API：
+      // 1. 禁用凭据
+      request.withCredentials = false;
+      // 2. 移除 X-Requested-With 请求头
+      delete request.headers['X-Requested-With'];
+      // 3. 覆盖默认的 baseURL，确保请求根路径正确
+      request.baseURL = '/';
+      console.log('[Axios Interceptor] Lyric Atlas request - Overrode baseURL, removed X-Requested-With, set withCredentials=false');
+    } else {
+      // 对其他请求：
+      // 1. 确保使用默认的 baseURL
+      request.baseURL = "/api/ncm";
+      // 2. 确保凭据设置为 true
+      request.withCredentials = true;
+      // 3. 确保 X-Requested-With 请求头存在
+      if (!request.headers['X-Requested-With']) {
+          request.headers['X-Requested-With'] = 'XMLHttpRequest';
+      }
+      console.log('[Axios Interceptor] Other request - Ensured baseURL, X-Requested-With, set withCredentials=true');
+    }
+
     if (!request.hiddenBar && typeof $loadingBar !== "undefined")
       $loadingBar.start();
     return request;
   },
   (error) => {
-    $loadingBar.error();
+    if (typeof $loadingBar !== "undefined") $loadingBar.error(); // Ensure loading bar handles error
     console.error("请求失败，请稍后重试");
     return Promise.reject(error);
   }
@@ -37,7 +66,7 @@ axios.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    $loadingBar.error();
+    if (typeof $loadingBar !== "undefined") $loadingBar.error(); // Ensure loading bar handles error
     if (error.response) {
       const data = error.response.data;
       switch (error.response.status) {
@@ -64,4 +93,4 @@ axios.interceptors.response.use(
   }
 );
 
-export default axios;
+export default axios; 

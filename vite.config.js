@@ -7,6 +7,8 @@ import viteCompression from "vite-plugin-compression";
 import AutoImport from "unplugin-auto-import/vite";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
+import { VueMcp } from 'vite-plugin-vue-mcp'
+import vueDevTools from 'vite-plugin-vue-devtools'
 import Components from "unplugin-vue-components/vite";
 
 // https://vitejs.dev/config/
@@ -14,6 +16,8 @@ export default ({ mode }) =>
   defineConfig({
     plugins: [
       vue(),
+      VueMcp(),
+      vueDevTools(),
       wasm(),
       topLevelAwait({
         promiseExportName: '__tla',
@@ -85,12 +89,22 @@ export default ({ mode }) =>
       port: 25536,
       open: true,
       http: true,
-      ssr: false,
+      ssr: true,
       proxy: {
-        "/api": {
+        "/api/ncm": {
           target: loadEnv(mode, process.cwd()).VITE_MUSIC_API,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ""),
+          rewrite: (path) => path.replace(/^\/api\/ncm/, ""),
+        },
+        "/api/unm": {
+          target: loadEnv(mode, process.cwd()).VITE_UNM_API,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/unm/, ""),
+        },
+        "/api/la": {
+          target: loadEnv(mode, process.cwd()).VITE_LYRIC_ATLAS_API_URL,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/la/, ""),
         },
       },
     },
@@ -111,5 +125,24 @@ export default ({ mode }) =>
       },
       // 为调试构建生成源代码映射 (sourcemap)
       sourcemap: !!process.env.TAURI_DEBUG,
+    },
+    preview: {
+      proxy: {
+        "/api/ncm": {
+          target: loadEnv(mode, process.cwd()).VITE_MUSIC_API,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/ncm/, ""),
+        },
+        "/api/unm": {
+          target: loadEnv(mode, process.cwd()).VITE_UNM_API,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/unm/, ""),
+        },
+        "/api/la": {
+          target: "https://lyric-atlas-api.vercel.app",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/la/, ""),
+        },
+      },
     },
   });
